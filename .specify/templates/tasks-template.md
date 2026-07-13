@@ -51,7 +51,7 @@ description: "Task list template for feature implementation"
 
 - [ ] T001 Create project structure per implementation plan
 - [ ] T002 Initialize [language] project with [framework] dependencies
-- [ ] T003 [P] Configure linting and formatting tools
+- [ ] T003 [P] Configure linting, formatting, and [e.g., accessibility/performance] tooling
 
 ---
 
@@ -95,6 +95,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
 - [ ] T016 [US1] Add validation and error handling
 - [ ] T017 [US1] Add logging for user story 1 operations
+- [ ] T017a [P] [US1] Perform [UX/Performance] audit for [component/endpoint] (to ensure no regressions)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -154,9 +155,8 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
-- [ ] TXXX Security hardening
-- [ ] TXXX Run quickstart.md validation
+- [ ] TXXX [P] [UX] Verify WCAG compliance for [feature]
+- [ ] TXXX [P] [Perf] Profile [critical path] to ensure no regressions
 
 ---
 

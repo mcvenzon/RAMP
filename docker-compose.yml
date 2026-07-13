@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # Database: PostgreSQL (Replacement for manual Supabase setup in Docker)
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-mrf_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Backend: Express API
+  backend:
+    build: ./backend
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-mrf_db}
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+
+  # ML Service: FastAPI
+  ml-service:
+    build: ./ml-service
+    restart: always
+    environment:
+      PORT: 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - backend
+
+  # Frontend: React (Vite)
+  frontend:
+    build: ./frontend
+    restart: always
+    environment:
+      VITE_API_URL: http://localhost:3001/api/v1
+      VITE_SUPABASE_URL: ${SUPABASE_URL}
+      VITE_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

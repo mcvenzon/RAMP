@@ -40,7 +40,24 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+## Constitution Check
+
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+
+**Checklist for Compliance:**
+
+- [ ] **KISS**: Is the proposed architecture/implementation simple, or am I over-engineering for "future" scenarios?
+- [ ] **DRY**: Am I abstracting too early? (Have I identified 3+ use cases for this abstraction?)
+- [ ] **YAGNI**: Am I implementing features or optimizations that are not explicitly required by the spec?
+- [ ] **SOLID**:
+    - [ ] **SRP**: Does each module/class have exactly one reason to change?
+    - [ ] **OCP**: Can I extend this feature without modifying existing core code?
+    - [ ] **LSP**: Will my subtypes be fully interchangeable with their parents without breaking logic?
+    - [ ] **ISP**: Am I splitting interfaces so clients don't depend on methods they don't use?
+    - [ ] **DIP**: Am I depending on abstractions/interfaces rather than concrete implementations?
+- [ ] **UX Guardrail**: Does the design/architecture ensure UI consistency and prevent "brittle" components?
+- [ ] **Performance Guardrail**: Does the plan avoid N+1 queries, bloated bundles, or unnecessary latency?
+
 
 ## Project Structure
 

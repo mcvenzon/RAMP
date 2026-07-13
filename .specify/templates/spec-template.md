@@ -82,7 +82,8 @@
 
 <!--
   ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right functional requirements.
+  Fill them out with the right functional requirements, UX/Accessibility needs,
+  and Performance targets.
 -->
 
 ### Functional Requirements
@@ -97,6 +98,22 @@
 
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
+
+### UX & Accessibility Requirements
+
+*Ensures UI consistency and accessibility (WCAG compliance) as per the Constitution.*
+
+- **UX-001**: Interface MUST adhere to [Design System / Style Guide Name].
+- **UX-002**: Interface MUST meet [e.g., WCAG 2.1 AA] accessibility standards.
+- **UX-003**: Visual/interaction patterns MUST remain consistent with [established component/pattern].
+
+### Performance & Scalability Requirements
+
+*Guards against performance regressions (e.g., N+1 queries, bundle bloat) as per the Constitution.*
+
+- **PR-001**: Latency for [action, e.g., "Search"] MUST be < [e.g., 200ms] at p95.
+- **PR-002**: Initial payload size for [page/module] MUST be < [e.g., 150KB] (gzipped).
+- **PR-003**: Data fetching MUST avoid [e.g., N+1 query patterns or excessive client-side joins].
 
 ### Key Entities *(include if feature involves data)*
 

@@ -1,0 +1,37 @@
+# .gitignore
+
+# Node.js
+node_modules/
+dist/
+build/
+*.log
+.env*
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Docker & Containers
+.dockerignore
+*.log
+*.tmp
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.tmp
