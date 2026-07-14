@@ -11,7 +11,7 @@ This project is containerized using Docker Compose, allowing you to spin up the 
 
 ### 1. Clone the Repository
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/mcvenzon/RAMP.git
 cd RAMP-v1
 ```
 
