@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { Page } from '../components/Page';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { Navbar } from '../components/Navbar';
-import { 
+import {
   Package, 
   TrendingUp, 
   AlertCircle, 

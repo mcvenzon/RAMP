@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import Login from '../views/Login';
-import { Navbar } from '../components/Navbar';
-import { InventoryDashboard } from '../views/InventoryDashboard';
-import { MarketplaceDashboard } from '../views/MarketplaceDashboard';
-import { LogMaterialForm } from '../views/LogMaterialView';
-import { Package, LayoutDashboard, ShoppingCart, ClipboardList, Lock } from 'lucide-react';
+import { useState } from 'react';
+import { useAuth } from './contexts/AuthContext';
+import Login from './views/Login';
+import { Navbar } from './components/Navbar';
+import InventoryDashboard from './views/InventoryDashboard';
+import MarketplaceDashboard from './views/MarketplaceDashboard';
+import LogMaterialForm from './views/LogMaterialView';
+import { LayoutDashboard, ShoppingCart, ClipboardList } from 'lucide-react';
 
 function App() {
   const { user, loading, signOut } = useAuth();
@@ -34,9 +34,9 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar 
-        user={{ name: user.email || 'User', role: 'MANAGER' }} 
-        onLogout={signOut} 
+      <Navbar
+        user={{ name: user.email || 'User', role: 'MANAGER' }}
+        onLogout={signOut}
       />
       
       <main className="flex-grow">
@@ -61,7 +61,7 @@ function App() {
         </button>
         <button 
           onClick={() => setView('marketplace')}
-          className={`flex flex-col items-center gap-1 px-4 py-1 rounded-full transition-colors ${view === 'marketplace' ? 'text-mrf-primary' : 'text-gray-500'}`
+          className={`flex flex-col items-center gap-1 px-4 py-1 rounded-full transition-colors ${view === 'marketplace' ? 'text-mrf-primary' : 'text-gray-500'}`}
         >
           <ShoppingCart size={20} />
           <span className="text-[10px] font-medium">Market</span>

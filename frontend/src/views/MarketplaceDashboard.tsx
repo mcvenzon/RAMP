@@ -1,33 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import { useState, useEffect } from 'react';
 import { Page } from '../components/Page';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { Navbar } from '../components/Navbar';
-import { 
-  TrendingUp, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Activity, 
-  ShoppingBag, 
-  Search,
-  AlertCircle
+import {
+  TrendingUp,
+  Activity,
+  ShoppingBag,
+  Search
 } from 'lucide-react';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
 } from 'recharts';
 
-interface MarketplaceDashboardProps {
-  onRefresh?: () => void;
-}
+const MOCK_DATA = [
+  { name: 'Mon', price: 14.2, demand: 0.55 },
+  { name: 'Tue', price: 14.8, demand: 0.58 },
+  { name: 'Wed', price: 15.1, demand: 0.6 },
+  { name: 'Thu', price: 15.4, demand: 0.63 },
+  { name: 'Fri', price: 15.85, demand: 0.62 },
+  { name: 'Sat', price: 15.6, demand: 0.59 },
+  { name: 'Sun', price: 15.9, demand: 0.64 },
+];
 
-const MarketplaceDashboard = ({ onRefresh }: MarketplaceDashboardProps) => {
+const MarketplaceDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +52,7 @@ const MarketplaceDashboard = ({ onRefresh }: MarketplaceDashboardProps) => {
         demandIndex: 0.62,
         activeListings: 24
       });
-    } catch (err) {
+    } catch {
       setError('Failed to load market stats.');
     } finally {
       setLoading(false);
@@ -112,7 +113,8 @@ const MarketplaceDashboard = ({ onRefresh }: MarketplaceDashboardProps) => {
           </Button>
         </div>
 
-        {/* Error State */}
+        {/* Loading / Error State */}
+        {loading && <div className="p-4 bg-blue-50 text-blue-700 rounded-lg">Loading market stats...</div>}
         {error && <div className="p-4 bg-red-50 text-red-700 rounded-lg">{error}</div>}
 
         {/* Chart Section */}

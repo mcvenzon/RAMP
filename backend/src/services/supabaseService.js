@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import ws from 'ws';
 
 dotenv.config();
 
@@ -10,7 +11,11 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Supabase URL and Service Role Key must be provided in environment variables.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  realtime: {
+    transport: ws,
+  },
+});
 
 export const getMaterial = async (materialId) => {
   const { data, error } = await supabase
