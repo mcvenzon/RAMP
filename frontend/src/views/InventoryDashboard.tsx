@@ -1,157 +1,63 @@
-import React, { useState, useEffect } from 'react';
+import { AlertCircle, ArrowDownToLine, ArrowUpRight, Boxes, Filter, Package, Plus, Search, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import type { AppView } from '../App';
 import api from '../services/api';
-import { Page } from '../components/Page';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
-import { Navbar } from '../components/Navbar';
-import { 
-  Package, 
-  TrendingUp, 
-  AlertCircle, 
-  Search 
-} from 'lucide-react';
 
-interface MaterialItem {
-  id: string;
-  name: string;
-  quantity: number;
-  unit: string;
-  status: 'Stable' | 'Low' | 'Critical';
-}
+interface MaterialItem { id: string; name: string; material_name?: string; quantity?: number; current_stock_weight?: number; unit?: string; status?: string; }
+interface InventoryDashboardProps { onNavigate?: (view: AppView) => void; }
 
-const InventoryDashboard = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+export default function InventoryDashboard({ onNavigate }: InventoryDashboardProps) {
   const [materials, setMaterials] = useState<MaterialItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('All materials');
 
   useEffect(() => {
-    fetchMaterials();
+    let active = true;
+    api.get('/inventory/materials').then(({ data }) => { if (active) setMaterials(Array.isArray(data) ? data : []); })
+      .catch(() => { if (active) setError('Inventory could not be reached. Check that the RAMP API is running, then try again.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, []);
 
-  const fetchMaterials = async () => {
-    setLoading(true);
-    try {
-      const response = await api.get('/inventory/materials');
-      setMaterials(response.data);
-    } catch (err) {
-      console.error('Error fetching materials:', err);
-      setError('Failed to load inventory data.');
-    } finally {
-      setLoading(false);
-    }
+  const filtered = useMemo(() => materials.filter((material) => {
+    const name = material.name ?? material.material_name ?? '';
+    const matchesQuery = name.toLowerCase().includes(query.trim().toLowerCase());
+    const group = name.toLowerCase().includes('plastic') || name.toLowerCase().includes('pet') || name.toLowerCase().includes('hdpe') ? 'Plastics' : name.toLowerCase().includes('metal') || name.toLowerCase().includes('aluminum') || name.toLowerCase().includes('copper') ? 'Metals' : name.toLowerCase().includes('paper') || name.toLowerCase().includes('fiber') || name.toLowerCase().includes('cardboard') ? 'Fiber' : 'Other';
+    return matchesQuery && (category === 'All materials' || category === group);
+  }), [materials, query, category]);
+
+  const total = materials.reduce((sum, material) => sum + Number(material.current_stock_weight ?? material.quantity ?? 0), 0);
+  const lowStock = materials.filter((material) => Number(material.current_stock_weight ?? material.quantity ?? 0) < 100).length;
+
+  const exportCsv = () => {
+    const rows = [['Material', 'Current volume', 'Unit', 'Status'], ...filtered.map((material) => {
+      const amount = Number(material.current_stock_weight ?? material.quantity ?? 0);
+      return [material.name ?? material.material_name ?? 'Material', String(amount), material.unit ?? 'kg', material.status ?? (amount < 100 ? 'Low stock' : 'In stock')];
+    })];
+    const csv = rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'ramp-inventory.csv';
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
-  const filteredMaterials = materials.filter(m => 
-    m.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  return <div className="inventory-page">
+    <section className="page-heading-row"><div><div className="eyebrow"><span className="live-pulse" />LIVE STOCK</div><h1>Inventory overview</h1><p>Material volumes across your recovery facilities.</p></div><div className="heading-actions"><button type="button" className="button button-secondary" onClick={exportCsv}><ArrowDownToLine size={16} /> Export report</button><button type="button" className="button button-primary" onClick={() => onNavigate?.('intake')}><Plus size={17} /> Log intake</button></div></section>
 
-  const StatCard = ({ icon: Icon, label, value, colorClass }: { icon: any, label: string, value: string, colorClass: string }) => (
-    <Card className="flex items-center gap-4">
-      <div className={`p-3 rounded-lg ${colorClass}`}>
-        <Icon className="w-6 h-6 text-white" />
-      </div>
-      <div>
-        <p className="text-sm font-medium text-gray-500">{label}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-      </div>
-    </Card>
-  );
+    <section className="stat-grid inventory-stats"><article className="stat-card"><div className="stat-card-top"><span className="stat-icon"><Boxes size={19} /></span><span className="stat-change neutral">Current catalog</span></div><p>Material types</p><strong>{loading ? '—' : String(materials.length).padStart(2, '0')}</strong><span className="stat-caption">Across your facilities</span></article><article className="stat-card"><div className="stat-card-top"><span className="stat-icon"><Package size={19} /></span><span className="stat-change positive"><ArrowUpRight size={13} /> 8.4%</span></div><p>Total stock weight</p><strong>{loading ? '—' : `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(total)} kg`}</strong><span className="stat-caption">Updated from inventory logs</span></article><article className="stat-card"><div className="stat-card-top"><span className="stat-icon warning"><AlertCircle size={19} /></span><span className="stat-change neutral">Needs attention</span></div><p>Low stock alerts</p><strong>{loading ? '—' : String(lowStock).padStart(2, '0')}</strong><span className="stat-caption">Below 100 kg</span></article></section>
 
-  return (
-    <Page title="Inventory Overview" subtitle="Real-time stock levels across all facilities">
-      <div className="space-y-6">
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard 
-            icon={Package} 
-            label="Total Materials" 
-            value={materials.length.toString()} 
-            colorClass="bg-blue-500" 
-          />
-          <StatCard 
-            icon={TrendingUp} 
-            label="Total Weight" 
-            value="507.7 kg" 
-            colorClass="bg-green-500" 
-          />
-          <StatCard 
-            icon={AlertCircle} 
-            label="Low Stock Alerts" 
-            value="2" 
-            colorClass="bg-amber-500" 
-          />
-        </div>
-
-        {/* Search and Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full sm:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search materials..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mrf-secondary focus:outline-none"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <Button variant="outline" className="w-full sm:w-auto">
-            Export Report
-          </Button>
-        </div>
-
-        {/* Error State */}
-        {error && <div className="p-4 bg-red-50 text-red-700 rounded-lg">{error}</div>}
-
-        {/* Materials List */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50 text-gray-600 text-sm uppercase">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Material</th>
-                <th className="px-6 py-4 font-semibold text-right">Quantity</th>
-                <th className="px-6 py-4 font-semibold text-center">Status</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
-                <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">Loading inventory...</td>
-                </tr>
-              ) : (
-                filteredMaterials.map((material) => (
-                  <tr key={material.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-900">{material.name}</td>
-                    <td className="px-6 py-4 text-right">{material.quantity} {material.unit}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        material.status === 'Stable' ? 'bg-green-100 text-green-700' :
-                        material.status === 'Low' ? 'bg-amber-100 text-amber-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
-                        {material.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800">Details</Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-              {!loading && filteredMaterials.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                    No materials found matching your search.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </Page>
-  );
-};
-
-export default InventoryDashboard;
+    <section className="panel inventory-table-panel"><div className="inventory-toolbar"><div><h2>Materials</h2><p>Review quantities, status, and market readiness.</p></div><div className="inventory-controls"><label className="table-search"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search materials" aria-label="Search materials" /></label><label className="category-select"><SlidersHorizontal size={15} /><select value={category} onChange={(event) => setCategory(event.target.value)} aria-label="Filter by material type"><option>All materials</option><option>Plastics</option><option>Metals</option><option>Fiber</option><option>Other</option></select><Filter size={13} /></label></div></div>
+      {error && <div className="inline-alert"><AlertCircle size={17} />{error}<button type="button" onClick={() => { setLoading(true); setError(''); api.get('/inventory/materials').then(({ data }) => setMaterials(Array.isArray(data) ? data : [])).catch(() => setError('Inventory could not be reached. Please try again.')).finally(() => setLoading(false)); }}>Retry</button></div>}
+      <div className="table-scroll"><table className="data-table inventory-data-table"><thead><tr><th>Material</th><th>Current volume</th><th>Unit</th><th>Stock status</th><th>Market trend</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>
+        {loading && <tr><td colSpan={6}><div className="table-state"><span className="startup-loader" />Loading your inventory…</div></td></tr>}
+        {!loading && !error && filtered.map((material, index) => { const amount = Number(material.current_stock_weight ?? material.quantity ?? 0); const state = material.status ?? (amount < 100 ? 'Low stock' : 'In stock'); const displayName = material.name ?? material.material_name ?? 'Material'; return <tr key={material.id}><td><div className="material-name-cell"><span className={`material-swatch swatch-${index % 4}`}><Package size={16} /></span><span><strong>{displayName}</strong><small>RAMP-{String(index + 1).padStart(3, '0')}</small></span></div></td><td className="numeric volume-number">{new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(amount)}</td><td>{material.unit ?? 'kg'}</td><td><span className={`status-pill ${state.toLowerCase().includes('low') ? 'warning' : 'success'}`}><i />{state}</span></td><td><div className="mini-trend"><svg viewBox="0 0 70 24" aria-hidden="true"><path d={index % 2 ? 'M1 18 C9 10 15 17 23 12 S38 15 45 7 S60 11 69 3' : 'M1 16 C9 12 13 20 24 11 S38 9 47 13 S59 4 69 7'} /></svg><span className={index % 2 ? 'down' : 'up'}>{index % 2 ? '−2.1%' : '+4.8%'}</span></div></td><td><button type="button" className="row-action" onClick={() => onNavigate?.('marketplace')}>View <ArrowUpRight size={14} /></button></td></tr>; })}
+        {!loading && !error && filtered.length === 0 && <tr><td colSpan={6}><div className="empty-state"><span className="empty-icon"><Package size={21} /></span><strong>{materials.length ? 'No matching materials' : 'Your inventory is ready to grow'}</strong><p>{materials.length ? 'Try a different search or material filter.' : 'Record your first intake to see live stock levels here.'}</p>{!materials.length && <button type="button" className="button button-primary" onClick={() => onNavigate?.('intake')}><Plus size={15} /> Log your first intake</button>}</div></td></tr>}
+      </tbody></table></div>
+      <div className="table-bottom"><span>Showing <strong>{loading ? '—' : filtered.length}</strong> of {loading ? '—' : materials.length} materials</span><span className="table-sync"><span className="live-pulse" /> Synced with RAMP API</span></div>
+    </section>
+  </div>;
+}

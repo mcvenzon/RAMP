@@ -24,6 +24,10 @@ cp .env.example .env
 Open `.env` in your preferred text editor and update the following:
 - `SUPABASE_URL`: Your Supabase Project URL.
 - `SUPABASE_ANON_KEY`: Your Supabase Anon Key.
+- `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key. The backend uses it for manager-verified collector invitations; never put it in the frontend environment file.
+- `FRONTEND_URL`: The app URL used as the collector invitation redirect (defaults to `http://localhost:5173` for Docker).
+
+In Supabase Auth, configure the email provider and add the frontend URL to the allowed redirect URLs. The manager must also have a `MANAGER` role and a facility assignment in `profiles`.
 
 > **Note:** If you prefer using the local PostgreSQL container instead of Supabase for the database, ensure your `DATABASE_URL` in the backend is configured to point to `db:5432`.
 

@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import inventoryRoutes from './api/inventoryRoutes.js';
 import marketplaceRoutes from './api/marketplaceRoutes.js';
+import teamRoutes from './api/teamRoutes.js';
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 // Routes
 app.use('/api/v1/inventory', inventoryRoutes);
 app.use('/api/v1/marketplace', marketplaceRoutes);
+app.use('/api/v1/team', teamRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

@@ -6,7 +6,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-interface NavbarProps extends React.HTMLAttributes<nav> {
+interface NavbarProps extends React.HTMLAttributes<HTMLElement> {
   user?: { name: string; role: string };
   onLogout?: () => void;
 }

@@ -1,205 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import { ArrowRight, BadgeCheck, Bell, Boxes, Check, Clock3, Filter, Gavel, Heart, MapPin, Package, Search, ShieldCheck, Sparkles, TrendingUp, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
 import api from '../services/api';
-import { Page } from '../components/Page';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
-import { Navbar } from '../components/Navbar';
-import { 
-  TrendingUp, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Activity, 
-  ShoppingBag, 
-  Search,
-  AlertCircle
-} from 'lucide-react';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer 
-} from 'recharts';
 
-interface MarketplaceDashboardProps {
-  onRefresh?: () => void;
-}
+interface Listing { id: string; material_name: string; quantity: number; unit: string; asking_price: number; seller_facility: string; status: string; }
+const previewLots: Listing[] = [
+  { id: 'preview-hdpe', material_name: 'Baled Clear HDPE Mix', quantity: 24.5, unit: 't', asking_price: 1240, seller_facility: 'MRF-04 · Quezon City', status: 'PREVIEW' },
+  { id: 'preview-aluminum', material_name: 'Premium Shred Aluminum', quantity: 18.2, unit: 't', asking_price: 2150, seller_facility: 'MRF-12 · Pasig', status: 'PREVIEW' },
+  { id: 'preview-cardboard', material_name: 'Industrial Grade OCC', quantity: 42, unit: 't', asking_price: 165, seller_facility: 'MRF-08 · Makati', status: 'PREVIEW' },
+  { id: 'preview-pet', material_name: 'Washed PET Flake Mix', quantity: 15, unit: 't', asking_price: 890, seller_facility: 'MRF-21 · Taguig', status: 'PREVIEW' },
+];
+const lotStyle = ['plastic', 'metal', 'fiber', 'pet'];
+const tabs = ['All materials', 'Plastics', 'Metals', 'Fiber'];
 
-const MarketplaceDashboard = ({ onRefresh }: MarketplaceDashboardProps) => {
-  const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [marketStats, setMarketStats] = useState({
-    avgPrice: 0,
-    demandIndex: 0,
-    activeListings: 0
-  });
+export default function MarketplaceDashboard() {
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadIssue, setLoadIssue] = useState(false);
+  const [query, setQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('All materials');
+  const [selected, setSelected] = useState<Listing | null>(null);
+  const [bid, setBid] = useState('');
+  const [bidState, setBidState] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [notice, setNotice] = useState('');
+  const [savedLots, setSavedLots] = useState<string[]>([]);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [sortBy, setSortBy] = useState('Recommended');
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    fetchMarketStats();
+    let active = true;
+    api.get('/marketplace/listings').then(({ data }) => { if (active) setListings(Array.isArray(data) ? data : []); }).catch(() => { if (active) { setListings([]); setLoadIssue(true); } }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, []);
+  useEffect(() => {
+    if (!selected) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setSelected(null); };
+    window.addEventListener('keydown', closeOnEscape);
+    closeButtonRef.current?.focus();
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [selected]);
 
-  const fetchMarketStats = async () => {
-    setLoading(true);
-    try {
-      // In a real app, we'd call a stats endpoint
-      // Mocking for now as we haven't implemented a dedicated stats service
-      setMarketStats({
-        avgPrice: 15.85,
-        demandIndex: 0.62,
-        activeListings: 24
-      });
-    } catch (err) {
-      setError('Failed to load market stats.');
-    } finally {
-      setLoading(false);
-    }
+  const usingPreview = !loading && listings.length === 0;
+  const visibleLots = usingPreview ? previewLots : listings;
+  const filteredLots = useMemo(() => visibleLots.filter((lot) => {
+    const matchesSearch = lot.material_name.toLowerCase().includes(query.toLowerCase()) || lot.seller_facility.toLowerCase().includes(query.toLowerCase());
+    const material = lot.material_name.toLowerCase();
+    const group = material.includes('plastic') || material.includes('pet') || material.includes('hdpe') ? 'Plastics' : material.includes('aluminum') || material.includes('metal') ? 'Metals' : 'Fiber';
+    return matchesSearch && (activeTab === 'All materials' || group === activeTab);
+  }).sort((a, b) => sortBy === 'Price: low to high' ? a.asking_price - b.asking_price : sortBy === 'Largest lots' ? b.quantity - a.quantity : 0), [visibleLots, query, activeTab, sortBy]);
+
+  const submitBid = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!selected || selected.id.startsWith('preview-')) { setNotice('Live bidding will be available when active listings are connected.'); return; }
+    setBidState('saving');
+    try { await api.post(`/marketplace/listings/${selected.id}/bids`, { bid_amount: Number(bid) }); setBidState('success'); }
+    catch { setBidState('error'); }
   };
 
-  const StatCard = ({ icon: Icon, label, value, colorClass }: { icon: any, label: string, value: string, colorClass: string }) => (
-    <Card className="flex items-center gap-4">
-      <div className={`p-3 rounded-lg ${colorClass}`}>
-        <Icon className="w-6 h-6 text-white" />
-      </div>
-      <div>
-        <p className="text-sm font-medium text-gray-500">{label}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-      </div>
-    </Card>
-  );
+  const categoryFor = (name: string) => name.toLowerCase().includes('aluminum') ? 'METALS' : name.toLowerCase().includes('cardboard') || name.toLowerCase().includes('occ') ? 'FIBER' : 'PLASTICS';
 
-  return (
-    <Page title="Marketplace Insights" subtitle="Analyze price trends and demand indicators">
-      <div className="space-y-6">
-        {/* Market Pulse Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard 
-            icon={TrendingUp} 
-            label="Avg. Price (7d)" 
-            value={`$${marketStats.avgPrice.toFixed(2)}`} 
-            colorClass="bg-blue-500" 
-          />
-          <StatCard 
-            icon={Activity} 
-            label="Market Demand" 
-            value={marketStats.demandIndex.toFixed(2)} 
-            colorClass="bg-purple-500" 
-          />
-          <StatCard 
-            icon={ShoppingBag} 
-            label="Active Listings" 
-            value={marketStats.activeListings.toString()} 
-            colorClass="bg-green-500" 
-          />
-        </div>
-
-        {/* Search and Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full sm:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search markets..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mrf-secondary focus:outline-none"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <Button variant="outline" className="w-full sm:w-auto">
-            Filter Results
-          </Button>
-        </div>
-
-        {/* Error State */}
-        {error && <div className="p-4 bg-red-50 text-red-700 rounded-lg">{error}</div>}
-
-        {/* Chart Section */}
-        <Card title="Price & Demand Correlation" subtitle="7-day trend analysis">
-          <div className="h-[350px] w-full mt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={MOCK_DATA}>
-                <defs>
-                  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis yAxisId="left" orientation="left" stroke="#3b82f6" />
-                <YAxis yAxisId="right" orientation="right" stroke="#8b5cf6" />
-                <Tooltip />
-                <Area 
-                  yAxisId="left"
-                  type="monotone" 
-                  dataKey="price" 
-                  stroke="#3b82f6" 
-                  fillOpacity={1} 
-                  fill="url(#colorPrice)" 
-                  name="Price ($)"
-                />
-                <Area 
-                  yAxisId="right"
-                  type="monotone" 
-                  dataKey="demand" 
-                  stroke="#8b5cf6" 
-                  fill="transparent" 
-                  name="Demand Index"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card title="Recent Transactions">
-             <div className="space-y-4 py-2">
-                {[1,2,3].map(i => (
-                  <div key={i} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500">
-                        M
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Aluminum (100kg)</p>
-                        <p className="text-xs text-gray-500">Sold to City MRF • 2h ago</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-green-600">+$1,550.00</p>
-                      <p className="text-xs text-gray-400">Completed</p>
-                    </div>
-                  </div>
-                ))}
-             </div>
-          </Card>
-          <Card title="Upcoming Bids">
-             <div className="space-y-4 py-2">
-                {[1,2].map(i => (
-                  <div key={i} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600">
-                        B
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">PET (50kg)</p>
-                        <p className="text-xs text-gray-500">Bid by User_942</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-blue-600">$825.00</p>
-                      <p className="text-xs text-gray-400">Active</p>
-                    </div>
-                  </div>
-                ))}
-             </div>
-          </Card>
-        </div>
-      </div>
-    </Page>
-  );
-};
-
-export default MarketplaceDashboard;
+  return <div className="marketplace-page">
+    <section className="page-heading-row"><div><div className="eyebrow"><span className="live-pulse" />RAMP BUYER NETWORK</div><h1>Materials marketplace</h1><p>Discover verified secondary materials from recovery facilities.</p></div><button type="button" className="button button-secondary" onClick={() => setNotice('Saved search alerts are ready to connect to your notification preferences.')}><Bell size={16} /> Saved searches</button></section>
+    <section className="market-market-pulse"><div className="pulse-title"><span className="pulse-icon"><TrendingUp size={18} /></span><div><strong>Market pulse</strong><small>Illustrative commodity index</small></div></div><div className="pulse-metric"><span>PET index</span><strong>₱42.80 <i>+4.2%</i></strong></div><div className="pulse-metric"><span>Metals global spot</span><strong>₱118.50 <i className="negative">−1.8%</i></strong></div><div className="pulse-metric"><span>Fiber composite</span><strong>₱8.24 <i>+0.5%</i></strong></div><button type="button" className="pulse-report" onClick={() => setNotice('Market report export will be available when analytics data is connected.')}>Market report <ArrowRight size={15} /></button></section>
+    <section className="market-toolbar"><div className="market-tabs" role="group" aria-label="Filter marketplace by material type">{tabs.map((tab) => <button type="button" aria-pressed={activeTab === tab} className={activeTab === tab ? 'active' : ''} key={tab} onClick={() => setActiveTab(tab)}>{tab}</button>)}</div><label className="table-search market-search"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search materials or facilities" aria-label="Search listings" /></label><div className="market-sort-control"><button className="filter-button" type="button" aria-expanded={sortOpen} onClick={() => setSortOpen(!sortOpen)}><Filter size={15} /><span>Sort</span></button>{sortOpen && <div className="market-sort-menu" role="group" aria-label="Sort listings">{['Recommended', 'Price: low to high', 'Largest lots'].map((option) => <button type="button" key={option} className={sortBy === option ? 'selected' : ''} aria-pressed={sortBy === option} onClick={() => { setSortBy(option); setSortOpen(false); }}>{option}</button>)}</div>}</div></section>
+    {usingPreview && <div className="preview-notice"><Sparkles size={16} /><span><strong>{loadIssue ? 'Marketplace API unavailable' : 'Marketplace preview'}</strong> — sample lots show how active listings will look. {loadIssue ? 'Check the API connection to see live listings.' : 'Your API currently has no active listings.'}</span></div>}
+    {loading ? <div className="panel market-loading"><span className="startup-loader" /> Loading available lots…</div> : <div className="market-content-grid"><section className="lot-grid" aria-label="Material listings">{filteredLots.map((lot, index) => <article className="lot-card" key={lot.id}>
+      <div className={`lot-visual lot-visual-${lotStyle[index % lotStyle.length]}`}><div className="lot-visual-top"><span className="lot-category">{categoryFor(lot.material_name)}</span><span className="closing-badge"><Clock3 size={12} /> 05h 42m</span></div><div className="material-art" aria-hidden="true"><span className="art-ring ring-one" /><span className="art-ring ring-two" /><Package size={49} strokeWidth={1.15} /></div><div className="lot-tags"><span>{lot.material_name.includes('HDPE') ? 'HDPE #2' : categoryFor(lot.material_name) === 'METALS' ? 'AL 6061' : categoryFor(lot.material_name) === 'FIBER' ? 'OCC #11' : 'PET FLAKE'}</span><span>{categoryFor(lot.material_name) === 'FIBER' ? 'BALED' : 'POST-CONSUMER'}</span></div></div>
+      <div className="lot-card-body"><div className="lot-title-row"><h2>{lot.material_name}</h2><button className={`favorite-button ${savedLots.includes(lot.id) ? 'saved' : ''}`} type="button" aria-label={savedLots.includes(lot.id) ? `Remove ${lot.material_name} from saved lots` : `Save ${lot.material_name}`} aria-pressed={savedLots.includes(lot.id)} onClick={() => setSavedLots((current) => current.includes(lot.id) ? current.filter((id) => id !== lot.id) : [...current, lot.id])}><Heart size={14} fill={savedLots.includes(lot.id) ? 'currentColor' : 'none'} /></button></div><p className="lot-location"><MapPin size={13} /> {lot.seller_facility}</p><div className="lot-specs"><div><span>WEIGHT</span><strong>{lot.quantity} {lot.unit}</strong></div><div><span>PURITY</span><strong className="teal-text">{index === 2 ? '94.0%' : index === 1 ? '99.5%' : '98.2%'}</strong></div><div><span>VERIFIED</span><strong><BadgeCheck size={14} /> Yes</strong></div></div><div className="lot-buy-row"><div><span>Asking price</span><strong>₱{Number(lot.asking_price).toLocaleString()}<small>/{lot.unit}</small></strong></div><button className="button button-primary bid-button" onClick={() => { setSelected(lot); setBid(String(lot.asking_price)); setBidState('idle'); }} type="button">{lot.id.startsWith('preview-') ? 'Lot details' : 'Place bid'}<ArrowRight size={14} /></button></div></div>
+    </article>)}{filteredLots.length === 0 && <div className="empty-state market-empty"><span className="empty-icon"><Boxes size={21} /></span><strong>No lots match your search</strong><p>Try a different material or facility name.</p></div>}</section>
+      <aside className="market-side-column"><article className="panel live-activity"><div className="activity-header"><div><h2>Activity preview</h2><small>Example events</small></div></div><div className="live-activity-items"><div className="live-activity-row"><span className="activity-symbol mint"><TrendingUp size={16} /></span><div><strong>EcoLogix Inc. placed a bid</strong><small>2 minutes ago · Lot #AL-091</small></div></div><div className="live-activity-row"><span className="activity-symbol mint"><Check size={16} /></span><div><strong>Lot #AL-091 was awarded</strong><small>8 minutes ago · Aluminum</small></div></div><div className="live-activity-row"><span className="activity-symbol gray"><Gavel size={16} /></span><div><strong>A new lot is available</strong><small>15 minutes ago · OCC Mix</small></div></div><div className="live-activity-row"><span className="activity-symbol mint"><TrendingUp size={16} /></span><div><strong>BioPolymers raised their offer</strong><small>21 minutes ago · PET flakes</small></div></div></div><button className="panel-footer-link" type="button" onClick={() => setNotice('Live activity will appear here when the marketplace events API is connected.')}>Activity details <ArrowRight size={14} /></button></article>
+        <article className="index-card"><div className="eyebrow">SAMPLE INDEX PERFORMANCE</div><h2>RAMP commodity index</h2><div className="index-line"><span>Plastics</span><strong>↑ 4.2%</strong></div><div className="index-line"><span>Metals</span><strong className="index-down">↓ 1.8%</strong></div><div className="index-line"><span>Fiber</span><strong>↑ 0.5%</strong></div><div className="index-sparkline"><svg viewBox="0 0 240 38" preserveAspectRatio="none" aria-hidden="true"><path d="M0 30 C25 26 20 17 49 21 S72 30 98 16 S126 18 150 9 S184 15 205 6 S223 10 240 2" /></svg></div><button type="button" onClick={() => setNotice('Market report export will be available when analytics data is connected.')}>Download market report <ArrowRight size={14} /></button></article><div className="trust-note"><ShieldCheck size={16} /><span>Every listing is checked against facility and material standards.</span></div></aside></div>}
+    {notice && <div role="status" className="toast-message"><span>{notice}</span><button type="button" onClick={() => setNotice('')} aria-label="Dismiss"><X size={15} /></button></div>}
+    {selected && <div className="modal-backdrop" role="presentation" onClick={() => setSelected(null)}><section className="bid-modal" role="dialog" aria-modal="true" aria-labelledby="bid-modal-title" onClick={(event) => event.stopPropagation()}><div className="modal-heading"><div><span className="eyebrow">{selected.id.startsWith('preview-') ? 'LOT PREVIEW' : 'SUBMIT AN OFFER'}</span><h2 id="bid-modal-title">{selected.material_name}</h2><p>{selected.seller_facility} · {selected.quantity} {selected.unit}</p></div><button ref={closeButtonRef} className="icon-button" type="button" onClick={() => setSelected(null)} aria-label="Close dialog"><X size={18} /></button></div>{selected.id.startsWith('preview-') ? <><div className="bid-preview-note"><Sparkles size={18} /><p>These are sample listings from the UI guide. Live bidding becomes available when your marketplace API returns active lots.</p></div><button className="button button-primary modal-submit" type="button" onClick={() => setSelected(null)}>Got it</button></> : bidState === 'success' ? <><div className="bid-success"><span><Check size={21} /></span><strong>Offer submitted</strong><p>Your bid has been sent to the seller for review.</p></div><button className="button button-primary modal-submit" type="button" onClick={() => setSelected(null)}>Done</button></> : <form onSubmit={submitBid}><label className="form-field"><span>Your offer (₱ per {selected.unit})</span><input required type="number" min="0.01" step="0.01" value={bid} onChange={(event) => setBid(event.target.value)} /><small>Asking price: ₱{Number(selected.asking_price).toLocaleString()} / {selected.unit}</small></label>{bidState === 'error' && <div className="inline-alert"><X size={15} />We couldn’t submit your bid. Please try again.</div>}<button className="button button-primary modal-submit" type="submit" disabled={bidState === 'saving'}>{bidState === 'saving' ? 'Submitting…' : 'Submit offer'}<ArrowRight size={15} /></button></form>}</section></div>}
+  </div>;
+}
